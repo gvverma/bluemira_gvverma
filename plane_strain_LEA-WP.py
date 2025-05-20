@@ -54,6 +54,61 @@ with XDMFFile(MPI.COMM_WORLD, "neufrustum4.xdmf", "w") as xdmf:
     
 ###-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------###
 
+# Checks the Measure for the Complete Mesh Domain and Not Just Each Tags
+import ufl
+
+dx = ufl.Measure("dx", domain=domain, subdomain_data=cell_markers)
+dS = ufl.Measure("dS", domain=domain, subdomain_data=facet_markers)
+ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_markers)
+areaj = fem.assemble_scalar(fem.form(1.0 * dx(2)))
+print(f"Computed area_areaj = {areaj:.7f}")
+
+areav = fem.assemble_scalar(fem.form(1.0 * dx(1)))
+print(f"Computed area_areav = {areav:.7f}")
+
+Ten = 100000.0
+
+sigma_z = (0.5*Ten)/(areaj + areav)
+print(f"The longitudinal stress (sigma_Z)=", sigma_z)
+
+
+length_1 = fem.assemble_scalar(fem.form(1.0 * dS(2)))
+print(f"Computed length_l1 = {length_1:.7f}")
+
+length_12 = fem.assemble_scalar(fem.form(1.0 * ds(1)))
+print(f"Computed length_l2 = {length_12:.7f}")
+
+
+
+####--------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Defining Material Properties through subdomains
+
+Q = fem.functionspace(domain, ("DG", 0))
+E = fem.Function(Q)
+nu = fem.Function(Q)
+
+my_surface_cells = cell_markers.find(1)
+E.x.array[my_surface_cells] = np.full_like(my_surface_cells, 2e11, dtype=default_scalar_type)
+nu.x.array[my_surface_cells] = np.full_like(my_surface_cells, 0.3, dtype=default_scalar_type)
+
+EFGH_cells = cell_markers.find(2)
+E.x.array[EFGH_cells] = np.full_like(EFGH_cells, 2e11, dtype=default_scalar_type)
+nu.x.array[EFGH_cells] = np.full_like(EFGH_cells, 0.3, dtype=default_scalar_type)
+
+IJKL_cells = cell_markers.find(3)
+E.x.array[IJKL_cells] = np.full_like(IJKL_cells, 2e11, dtype=default_scalar_type)
+nu.x.array[IJKL_cells] = np.full_like(IJKL_cells, 0.3, dtype=default_scalar_type)
+
+MNOP_cells = cell_markers.find(4)
+E.x.array[MNOP_cells] = np.full_like(MNOP_cells, 2e11, dtype=default_scalar_type)
+nu.x.array[MNOP_cells] = np.full_like(MNOP_cells, 0.3, dtype=default_scalar_type)
+
+QRST_cells = cell_markers.find(5)
+E.x.array[QRST_cells] = np.full_like(QRST_cells, 2e11, dtype=default_scalar_type)
+nu.x.array[QRST_cells] = np.full_like(QRST_cells, 0.3, dtype=default_scalar_type)
+
+
+####------------------------------------------------------------------------------------------------------------------------------------------------------------
 gdim = 2
 
 def strain(u, repr ="vectorial"):
@@ -99,10 +154,6 @@ T = fem.Constant(domain, 1000000.0)
 
 #Self-weight on the surface
 n = FacetNormal(domain)
-
-ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_markers)
-dx = ufl.Measure("dx", domain=domain, subdomain_data=cell_markers)
-dS = ufl.Measure("dS", domain=domain, subdomain_data=facet_markers)
 
 L_form = dot(T*n,u_) * ds(8)
 
